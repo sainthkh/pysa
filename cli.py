@@ -1,6 +1,9 @@
+import sys
 import argparse
 import os
 import sqlite3
+import stock.companies as companies
+from stock.openapi import init_openapi
 
 dbPath = os.getcwd() + '/db.db'
 con = sqlite3.connect(dbPath)
@@ -15,7 +18,8 @@ def init(args):
         (key text, value text)''')
 
 def update(args):
-    print('update')
+    openapi = init_openapi(sys.argv)
+    print(openapi.get_total_data('005930', '210906'))
 
 def listStocks(args):
     print('listStocks')
