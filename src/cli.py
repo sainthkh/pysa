@@ -18,7 +18,7 @@ def init(args):
         (key text, value text)''')
 
 def update(args):
-    openapi = init_openapi(sys.argv)
+    openapi = init_openapi()
     print(openapi.get_total_data('005930', '210906'))
 
 def listStocks(args):

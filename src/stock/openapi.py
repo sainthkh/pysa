@@ -135,7 +135,7 @@ class Openapi(QAxWidget):
         except Exception as e:
             is_64bits = sys.maxsize > 2**32
             if is_64bits:
-                logger.critical('현재 Anaconda는 64bit 환경입니다. 32bit 환경으로 실행하여 주시기 바랍니다.')
+                logger.critical('32bit 환경으로 실행하여 주시기 바랍니다.')
             else:
                 logger.critical(e)
 
