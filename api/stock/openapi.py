@@ -4,6 +4,7 @@ from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 import logging.handlers
 import time
+import datetime
 from pandas import DataFrame
 
 is_64bits = sys.maxsize > 2**32
@@ -43,7 +44,7 @@ class Openapi(QAxWidget):
             high = self._get_comm_data(trcode, rqname, i, "고가")
             low = self._get_comm_data(trcode, rqname, i, "저가")
             close = self._get_comm_data(trcode, rqname, i, "현재가")
-            # volume = self._get_comm_data(trcode, rqname, i, "거래량")
+            volume = self._get_comm_data(trcode, rqname, i, "거래량")
 
             self.ohlcv.append({
                 'date': date, 
@@ -51,6 +52,7 @@ class Openapi(QAxWidget):
                 'high': int(high), 
                 'low': int(low), 
                 'close': int(close),
+                'volume': int(volume),
             })
 
     def _receive_tr_data(self, screen_no, rqname, trcode, record_name, next, unused1, unused2, unused3, unused4):
@@ -74,7 +76,7 @@ class Openapi(QAxWidget):
     # 사용방법
     # code: 종목코드(ex. '005930' )
     # start : 기준일자. (ex. '20200424') => 20200424 일자 까지의 모든 open, high, low, close, volume 데이터 출력
-    def get_total_data(self, code, start):
+    def _get_total_data(self, code, start):
         self.ohlcv = []
         self.set_input_value("종목코드", code)
         self.set_input_value("기준일자", start)
@@ -93,6 +95,11 @@ class Openapi(QAxWidget):
         time.sleep(0.2)
 
         return self.ohlcv
+    
+    def get_total_data(self, code: str, year: int, month: int, day: int):
+        d = datetime.datetime(year, month, day)
+
+        return self._get_total_data(code, d.strftime('%Y%m%d'))
 
     def get_first_600_days(self, code, date):
         self.first_600 = True

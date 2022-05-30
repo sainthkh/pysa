@@ -5,7 +5,7 @@ import sqlite3
 import stock.companies as companies
 from stock.openapi import init_openapi
 
-dbPath = os.getcwd() + '/db.db'
+dbPath = os.getcwd() + '/../db.db'
 con = sqlite3.connect(dbPath)
 cur = con.cursor()
 
@@ -19,7 +19,21 @@ def init(args):
 
 def update(args):
     openapi = init_openapi()
-    print(openapi.get_total_data('005930', '210906'))
+    print(openapi.get_total_data('005930', 2020, 4, 24))
+
+def update_companies(args):
+    c = companies.get_companies()
+
+    for index, row in c.iterrows():
+        print(row['code'], row['code_name'], row['category'], row['product'])
+
+    cur.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='companies' ''')
+
+    if cur.fetchone()[0] == 1: 
+        cur.execute('''DROP TABLE companies''')
+        
+    cur.execute('''CREATE TABLE companies
+        (code text, name text, category text, product text, type integer)''')
 
 def listStocks(args):
     print('listStocks')

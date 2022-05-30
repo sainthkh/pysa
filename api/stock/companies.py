@@ -1,14 +1,21 @@
 import pandas as pd
 
-def clease_data(data):
+def clease_data(data: pd.DataFrame):
     # 6자리 만들고 앞에 0을 붙인다.
     data.종목코드 = data.종목코드.map('{:06d}'.format)
 
-    # 우리가 필요한 것은 회사명과 종목코드이기 때문에 필요없는 column들은 제외해준다.
-    data = data[['회사명', '종목코드']]
+    # 필요없는 column들은 제외해준다.
+    data = data[['회사명', '종목코드', '업종', '주요제품']]
 
     # 한글로된 컬럼명을 영어로 바꿔준다.
-    return data.rename(columns={'회사명': 'code_name', '종목코드': 'code'})
+    return data.rename(
+        columns={
+            '회사명': 'code_name', 
+            '종목코드': 'code', 
+            '업종': 'category',
+            '주요제품': 'product',
+        }
+    )
 
 # 불성실공시법인 가져오는 함수
 def get_companies_insincerity():
