@@ -52,12 +52,6 @@ def update_companies(args):
 
     print('Update finished.')
 
-def listStocks(args):
-    print('listStocks')
-
-def input(args):
-    print('input')
-
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers()
 
@@ -69,12 +63,6 @@ parser_sub.set_defaults(func=update)
 
 parser_sub = subparsers.add_parser('update-companies')
 parser_sub.set_defaults(func=update_companies)
-
-parser_sub = subparsers.add_parser('list')
-parser_sub.set_defaults(func=listStocks)
-
-parser_sub = subparsers.add_parser('input')
-parser_sub.set_defaults(func=input)
 
 args = parser.parse_args()
 args.func(args)
