@@ -2,6 +2,7 @@ import sys
 import argparse
 import os
 import sqlite3
+import datetime
 import stock.companies as companies
 from stock.openapi import init_openapi
 
@@ -15,17 +16,50 @@ dbPath = os.getcwd() + '/../db.db'
 con = sqlite3.connect(dbPath)
 cur = con.cursor()
 
+def table_exists(name: str):
+    cur.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name=? ''', (name,))
+
+    if cur.fetchone()[0] == 1: 
+        return True
+    
+    return False
+
 def update(args):
+    if not table_exists('companies'):
+        print('update-companies로 회사 목록을 생성해 주세요.')
+        return
+
+    date = datetime.date.today()
+
+    if datetime.datetime.now().hour < 16:
+        date = date - datetime.timedelta(days=1)
+
+    print('날짜: ' + date.strftime('%Y%m%d'))
+
     openapi = init_openapi()
-    print(openapi.get_total_data('005930', 2020, 4, 24))
+
+    cur.execute('SELECT code, name FROM companies WHERE type = 0')
+
+    for row in cur.fetchall():
+        code, name = row
+        if not table_exists(code):
+            print('테이블 생성 중: {}({})'.format(name, code))
+            cur.execute('''CREATE TABLE '{}'
+                (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
+        
+        data = openapi.get_first_600_days(code, date.year, date.month, date.day)
+
+        for d in data:
+            cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+        
+        con.commit()
 
 def update_companies(args):
     print('테이블 생성 중...')
-    cur.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='companies' ''')
 
-    if cur.fetchone()[0] == 1: 
+    if table_exists('companies'):
         cur.execute('''DROP TABLE companies''')
-    
+
     # type: 
     #  - 0: 정상
     #  - 1: 불성실공시법인

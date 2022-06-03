@@ -95,7 +95,7 @@ class Openapi(QAxWidget):
 
         return self._get_total_data(code, d.strftime('%Y%m%d'))
 
-    def get_first_600_days(self, code, date):
+    def _get_first_600_days(self, code, date):
         self.first_600 = True
         self.ohlcv = [] #  {'date': [], 'open': [], 'high': [], 'low': [], 'close': [], 'volume': []}
         
@@ -107,6 +107,11 @@ class Openapi(QAxWidget):
         time.sleep(0.2)
 
         return self.ohlcv
+
+    def get_first_600_days(self, code: str, year: int, month: int, day: int):
+        d = datetime.datetime(year, month, day)
+
+        return self._get_first_600_days(code, d.strftime('%Y%m%d'))
 
     def account_info(self):
         account_number = self.get_login_info("ACCNO")
