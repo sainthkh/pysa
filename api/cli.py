@@ -92,6 +92,16 @@ def update_companies(args):
 
     print('업데이트 완료.')
 
+def drop_data_tables(args):
+    cur.execute('SELECT code, name FROM companies WHERE type = 0')
+
+    for row in cur.fetchall():
+        code, name = row
+
+        if table_exists(code):
+            print('테이블 삭제 중: {}({})'.format(name, code))
+            cur.execute('''DROP TABLE '{}' '''.format(code))
+
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers()
 
@@ -100,6 +110,9 @@ parser_sub.set_defaults(func=update)
 
 parser_sub = subparsers.add_parser('update-companies')
 parser_sub.set_defaults(func=update_companies)
+
+parser_sub = subparsers.add_parser('drop')
+parser_sub.set_defaults(func=drop_data_tables)
 
 args = parser.parse_args()
 args.func(args)
