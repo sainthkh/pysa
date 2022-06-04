@@ -49,7 +49,7 @@ def update(args):
         
         data = openapi.get_first_600_days(code, date.year, date.month, date.day)
 
-        for d in data:
+        for d in data.reverse():
             cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
         
         con.commit()
