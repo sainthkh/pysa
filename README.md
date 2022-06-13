@@ -1,6 +1,8 @@
 # pysa
 
-Note: Add autogui when things get better.
+## Commands
 
-* Already bought -> buy/sell price list -> put them
-* New stocks -> Price list.
+```
+pyenv exec pipenv shell
+python cli.py update
+```

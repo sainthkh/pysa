@@ -48,10 +48,12 @@ def update(args):
 
     cur.execute('SELECT code, name FROM companies WHERE type = 0')
 
+    counter = 0
+
     for row in cur.fetchall():
         code, name = row
         if not table_exists(code):
-            print('테이블 생성 중: {}({})'.format(name, code))
+            print('테이블 생성 중({}/950): {}({})'.format(counter + 1, name, code))
             cur.execute('''CREATE TABLE '{}'
                 (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
         
@@ -61,7 +63,7 @@ def update(args):
             for d in data:
                 cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
         else:
-            print('테이블 업데이트 중: {}({})'.format(name, code))
+            print('테이블 업데이트 중({}/950): {}({})'.format(counter + 1, name, code))
 
             cur.execute('''SELECT date FROM '{}' ORDER BY date DESC LIMIT 1'''.format(code))
 
@@ -92,6 +94,12 @@ def update(args):
                 cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
         
         con.commit()
+
+        counter += 1
+
+        if counter > 950:
+            print('업데이트 완료')
+            break
 
 def update_companies(args):
     print('테이블 생성 중...')
