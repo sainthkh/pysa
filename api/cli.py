@@ -5,6 +5,7 @@ import sqlite3
 import datetime
 import stock.companies as companies
 from stock.openapi import init_openapi
+import exchange_calendars as ecal
 
 is_64bits = sys.maxsize > 2**32
 if is_64bits:
@@ -31,10 +32,17 @@ def update(args):
 
     date = datetime.date.today()
 
+    print('오늘: ' + date.strftime('%Y%m%d'))
+
     if datetime.datetime.now().hour < 16:
         date = date - datetime.timedelta(days=1)
 
-    print('날짜: ' + date.strftime('%Y%m%d'))
+    xkrx = ecal.get_calendar("XKRX")
+    range = xkrx.sessions_in_range(date - datetime.timedelta(days=7), date)
+    date = range[-1]
+    most_recent_trade_date = date.strftime('%Y%m%d')
+
+    print('최근 거래일: ' + most_recent_trade_date)
 
     openapi = init_openapi()
 
@@ -47,10 +55,41 @@ def update(args):
             cur.execute('''CREATE TABLE '{}'
                 (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
         
-        data = openapi.get_first_600_days(code, date.year, date.month, date.day)
+            data = openapi.get_first_600_days(code, date.year, date.month, date.day)
+            data.reverse()
 
-        for d in data.reverse():
-            cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+            for d in data:
+                cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+        else:
+            print('테이블 업데이트 중: {}({})'.format(name, code))
+
+            cur.execute('''SELECT date FROM '{}' ORDER BY date DESC LIMIT 1'''.format(code))
+
+            fetched = cur.fetchone()
+
+            most_recent_db_date = ''
+
+            if fetched is None:
+                most_recent_db_date = '00000000' 
+            else:
+                most_recent_db_date = fetched[0]
+
+            if most_recent_db_date == most_recent_trade_date:
+                print('최신 정보. 다음 회사로 이동합니다.')
+                continue
+
+            data = openapi.get_first_600_days(code, date.year, date.month, date.day)
+
+            recent_data = []
+
+            for d in data:
+                if d['date'] > most_recent_db_date:
+                    recent_data.append(d)
+
+            recent_data.reverse()
+
+            for d in recent_data:
+                cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
         
         con.commit()
 
