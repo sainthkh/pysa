@@ -142,7 +142,7 @@ def minimum(args):
                     today_lowest = False
                     break
             
-            if today_lowest:
+            if today_lowest and data[0]['low'] < 20000:
                 companies.append((code, name))
     
     print_companies(companies)
