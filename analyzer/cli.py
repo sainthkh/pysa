@@ -135,6 +135,9 @@ def minimum(args):
                     'low': d[0],
                 })
             
+            if data[0]['low'] == data[1]['low'] and data[0]['low'] == data[2]['low']:
+                continue
+
             today_lowest = True
 
             for i in range(1, len(data)):
