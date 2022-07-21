@@ -150,6 +150,45 @@ def minimum(args):
     
     print_companies(companies)
 
+def inc_last_week_and_dec(args):
+    cur.execute('SELECT code, name FROM companies WHERE type = 0')
+
+    companies = []
+
+    for row in cur.fetchall():
+        code, name = row
+
+        if table_exists(code):
+            cur.execute('''SELECT open, high, low from '{}' ORDER BY date DESC LIMIT 15'''.format(code))
+
+            data = []
+
+            for d in cur.fetchall():
+                data.append({
+                    'open': d[0],
+                    'high': d[1],
+                    'low': d[2],
+                })
+            
+            inc_2_weeks_ago = False
+
+            for i in range(10, 15):
+                if (data[i]['high'] > data[i]['open'] * 1.2):
+                    inc_2_weeks_ago = True
+                    break
+
+            highest = data[10]['high']
+
+            for i in range(10, 15):
+                if data[i]['high'] > highest:
+                    highest = data[i]['high']
+
+            if inc_2_weeks_ago: 
+                if data[0]['low'] < 0.6 * highest:
+                    companies.append((code, name))
+    
+    print_companies(companies)
+
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers()
 
@@ -164,6 +203,9 @@ parser_sub.set_defaults(func=month_dec)
 
 parser_sub = subparsers.add_parser('min')
 parser_sub.set_defaults(func=minimum)
+
+parser_sub = subparsers.add_parser('2week-dec')
+parser_sub.set_defaults(func=inc_last_week_and_dec)
 
 args = parser.parse_args()
 args.func(args)
