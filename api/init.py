@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-dbPath = os.path.join(os.getcwd(), 'db.db')
+dbPath = os.path.join(os.getcwd(), '..', 'db.db')
 con = sqlite3.connect(dbPath)
 cur = con.cursor()
 
