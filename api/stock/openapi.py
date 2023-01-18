@@ -25,6 +25,7 @@ class Openapi(QAxWidget):
         self._set_signal_slots()
         self.comm_connect()
         self.account_info()
+        self.counter = 0
         self.first_600 = False
 
     def _opt10081(self, rqname, trcode):
@@ -52,10 +53,13 @@ class Openapi(QAxWidget):
     def _receive_tr_data(self, screen_no, rqname, trcode, record_name, next, unused1, unused2, unused3, unused4):
         # print("_receive_tr_data!!!")
         # print(rqname, trcode, next)
-        if self.first_600 and next == '2':
-            self.remained_data = True
-        else:
+        if self.first_600:
             self.remained_data = False
+        else:
+            if next == '2':
+                self.remained_data = True
+            else:
+                self.remained_data = False
 
         if rqname == "opt10081_req":
             self._opt10081(rqname, trcode)
@@ -174,10 +178,15 @@ class Openapi(QAxWidget):
             logger.critical(e)
 
     def comm_rq_data(self, rqname, trcode, next, screen_no):
+        self.counter += 1
+
         self.dynamicCall("CommRqData(QString, QString, int, QString)", rqname, trcode, next, screen_no)
         time.sleep(TR_REQ_TIME_INTERVAL)
         self.tr_event_loop = QEventLoop()
         self.tr_event_loop.exec_()
+
+    def count_over(self):
+        return self.counter > 950
 
     def _get_comm_data(self, code, field_name, index, item_name):
         ret = self.dynamicCall("GetCommData(QString, QString, int, QString)", code, field_name, index, item_name)
