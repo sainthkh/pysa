@@ -7,6 +7,8 @@ import stock.companies as companies
 from stock.openapi import init_openapi
 import exchange_calendars as ecal
 
+print('Pysa를 실행했습니다.')
+
 is_64bits = sys.maxsize > 2**32
 if is_64bits:
     raise Exception('32bit 환경으로 실행하여 주시기 바랍니다.')
@@ -30,19 +32,7 @@ def update(args):
         print('update-companies로 회사 목록을 생성해 주세요.')
         return
 
-    date = datetime.date.today()
-
-    print('오늘: ' + date.strftime('%Y%m%d'))
-
-    if datetime.datetime.now().hour < 16:
-        date = date - datetime.timedelta(days=1)
-
-    xkrx = ecal.get_calendar("XKRX")
-    range = xkrx.sessions_in_range(date - datetime.timedelta(days=7), date)
-    date = range[-1]
-    most_recent_trade_date = date.strftime('%Y%m%d')
-
-    print('최근 거래일: ' + most_recent_trade_date)
+    date = _most_recent_trade_date()
 
     openapi = init_openapi()
 
@@ -101,6 +91,59 @@ def update(args):
             print('업데이트 완료')
             break
 
+def update_all(args):
+    if not table_exists('companies'):
+        print('update-companies로 회사 목록을 생성해 주세요.')
+        return
+
+    if not table_exists('settings'):
+        cur.execute('''CREATE TABLE 'settings'
+            (key text, value text)''')
+    
+    date = _most_recent_trade_date()
+
+    openapi = init_openapi()
+
+    cur.execute('SELECT code, name FROM companies WHERE type = 0')
+
+    for row in cur.fetchall():
+        code, name = row
+        if not table_exists(code):
+            print('테이블 생성 중: {}({})'.format(name, code))
+            cur.execute('''CREATE TABLE '{}'
+                (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
+        
+            data = openapi.get_total_data(code, date.year, date.month, date.day)
+            data.reverse()
+
+            for d in data:
+                cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+        else:
+            print('{} 회사 정보가 존재합니다. 넘어갑니다.'.format(name))
+
+        con.commit()
+
+        if openapi.count_over():
+            print('호출 횟수가 초과되었습니다. 종료합니다.')
+            break
+
+def _most_recent_trade_date():
+    date = datetime.date.today()
+
+    print('오늘: ' + date.strftime('%Y%m%d'))
+
+    if datetime.datetime.now().hour < 16:
+        date = date - datetime.timedelta(days=1)
+
+    xkrx = ecal.get_calendar("XKRX")
+    range = xkrx.sessions_in_range(date - datetime.timedelta(days=7), date)
+    date = range[-1]
+    most_recent_trade_date = date.strftime('%Y%m%d')
+
+    print('최근 거래일: ' + most_recent_trade_date)
+
+    return date
+
 def update_companies(args):
     print('테이블 생성 중...')
 
@@ -111,16 +154,20 @@ def update_companies(args):
     #  - 0: 정상
     #  - 1: 불성실공시법인
     #  - 2: 관리종목
+    # market:
+    #  - 0: KOSPI
+    #  - 1: KOSDAQ
     cur.execute('''CREATE TABLE companies
-        (code text, name text, category text, product text, type integer)''')
+        (code text, name text, category text, product text, type integer, market int)''')
 
     print('회사 목록 다운로드 중...')
-    c = companies.get_companies()
+    company_lists = [companies.get_companies_kospi(), companies.get_companies_kosdaq()]
 
     print('데이터 입력 중...')
-    for index, row in c.iterrows():
-        cur.execute('''INSERT INTO companies VALUES (?,?,?,?,?)''', (row['code'], row['code_name'], row['category'], row['product'], 0))
-    
+    for i, c in enumerate(company_lists):
+        for index, row in c.iterrows():
+            cur.execute('''INSERT INTO companies VALUES (?,?,?,?,?,?)''', (row['code'], row['code_name'], row['category'], row['product'], 0, i))
+        
     print('불성실공시법인 목록 다운로드 중...')
     ci = companies.get_companies_insincerity()
 
@@ -135,7 +182,7 @@ def update_companies(args):
     for index, row in cm.iterrows():
         cur.execute('''UPDATE companies SET type = 2 WHERE code = ?''', (row['code'],))
 
-    con.commit()
+        con.commit()
 
     print('업데이트 완료.')
 
@@ -154,6 +201,9 @@ subparsers = parser.add_subparsers()
 
 parser_sub = subparsers.add_parser('update')
 parser_sub.set_defaults(func=update)
+
+parser_sub = subparsers.add_parser('update-all')
+parser_sub.set_defaults(func=update_all)
 
 parser_sub = subparsers.add_parser('update-companies')
 parser_sub.set_defaults(func=update_companies)
