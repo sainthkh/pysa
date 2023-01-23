@@ -5,9 +5,11 @@ import sqlite3
 import datetime
 import stock.companies as companies
 from stock.openapi import init_openapi
+from stock.logger import get_logger
 import exchange_calendars as ecal
 
-print('Pysa를 실행했습니다.')
+logger = get_logger()
+logger.debug('Pysa를 실행했습니다.')
 
 is_64bits = sys.maxsize > 2**32
 if is_64bits:
@@ -26,6 +28,16 @@ def table_exists(name: str):
         return True
     
     return False
+
+def update_settings(key, value):
+    cur.execute('''SELECT key from settings where key="{}"'''.format(key))
+
+    result = cur.fetchone()
+
+    if result is not None:
+        cur.execute('''UPDATE settings SET value=? WHERE key=?''', (value, key))
+    else:
+        cur.execute('''INSERT INTO settings VALUES (?, ?)''', (key, value))
 
 def update(args):
     if not table_exists('companies'):
@@ -109,7 +121,7 @@ def update_all(args):
     for row in cur.fetchall():
         code, name = row
         if not table_exists(code):
-            print('테이블 생성 중: {}({})'.format(name, code))
+            logger.debug('테이블 생성 중: {}({})'.format(name, code))
             cur.execute('''CREATE TABLE '{}'
                 (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
         
@@ -118,6 +130,8 @@ def update_all(args):
 
             for d in data:
                 cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+
+            update_settings('ua-last-company-code', code)
         else:
             print('{} 회사 정보가 존재합니다. 넘어갑니다.'.format(name))
 
