@@ -2,17 +2,13 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
-import logging.handlers
 import time
 import datetime
 from pandas import DataFrame
 
-formatter = logging.Formatter('[%(levelname)s|%(filename)s:%(lineno)s] %(asctime)s > %(message)s')
-logger = logging.getLogger("crumbs")
-logger.setLevel(logging.DEBUG)
-streamHandler = logging.StreamHandler()
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
+from .logger import get_logger
+
+logger = get_logger()
 
 TR_REQ_TIME_INTERVAL = 0.2
 
