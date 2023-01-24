@@ -2,11 +2,10 @@ import sys
 import argparse
 import os
 import sqlite3
-import datetime
 import stock.companies as companies
 from stock.openapi import init_openapi
 from stock.logger import get_logger
-import exchange_calendars as ecal
+from stock.calendar import find_most_recent_trade_date
 
 logger = get_logger()
 logger.debug('Pysa를 실행했습니다.')
@@ -44,63 +43,53 @@ def update(args):
         print('update-companies로 회사 목록을 생성해 주세요.')
         return
 
-    date = _most_recent_trade_date()
+    date = find_most_recent_trade_date()
+    most_recent_trade_date = date.strftime('%Y%m%d')
 
     openapi = init_openapi()
 
     cur.execute('SELECT code, name FROM companies WHERE type = 0')
 
-    counter = 0
-
     for row in cur.fetchall():
         code, name = row
-        if not table_exists(code):
-            print('테이블 생성 중({}/950): {}({})'.format(counter + 1, name, code))
-            cur.execute('''CREATE TABLE '{}'
-                (date text, open integer, high integer, low integer, close integer, volume integer)'''.format(code))
-        
-            data = openapi.get_first_600_days(code, date.year, date.month, date.day)
-            data.reverse()
 
-            for d in data:
-                cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+        cur.execute('''SELECT date FROM '{}' ORDER BY date DESC LIMIT 1'''.format(code))
+
+        fetched = cur.fetchone()
+
+        most_recent_db_date = ''
+
+        if fetched is None:
+            most_recent_db_date = '00000000' 
         else:
-            print('테이블 업데이트 중({}/950): {}({})'.format(counter + 1, name, code))
+            most_recent_db_date = fetched[0]
 
-            cur.execute('''SELECT date FROM '{}' ORDER BY date DESC LIMIT 1'''.format(code))
+        if most_recent_db_date == most_recent_trade_date:
+            print('최신 정보. 다음 회사로 이동합니다.')
+            continue
 
-            fetched = cur.fetchone()
+        logger.debug('테이블 업데이트 중: {}({})'.format(name, code))
 
-            most_recent_db_date = ''
+        data = openapi.get_first_600_days(code, date.year, date.month, date.day)
 
-            if fetched is None:
-                most_recent_db_date = '00000000' 
-            else:
-                most_recent_db_date = fetched[0]
+        recent_data = []
 
-            if most_recent_db_date == most_recent_trade_date:
-                print('최신 정보. 다음 회사로 이동합니다.')
-                continue
+        for d in data:
+            if d['date'] > most_recent_db_date:
+                recent_data.append(d)
 
-            data = openapi.get_first_600_days(code, date.year, date.month, date.day)
+        recent_data.reverse()
 
-            recent_data = []
-
-            for d in data:
-                if d['date'] > most_recent_db_date:
-                    recent_data.append(d)
-
-            recent_data.reverse()
-
-            for d in recent_data:
-                cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
+        for d in recent_data:
+            cur.execute('''INSERT INTO '{}' VALUES (?, ?, ?, ?, ?, ?) '''.format(code), (d['date'], d['open'], d['high'], d['low'], d['close'], d['volume']))
         
+        update_settings('ud-last-date', most_recent_trade_date)
+        update_settings('ud-last-company-code', code)
+
         con.commit()
 
-        counter += 1
-
-        if counter > 950:
-            print('업데이트 완료')
+        if openapi.count_over():
+            print('호출 횟수가 초과되었습니다. 종료합니다.')
             break
 
 def update_all(args):
@@ -112,7 +101,7 @@ def update_all(args):
         cur.execute('''CREATE TABLE 'settings'
             (key text, value text)''')
     
-    date = _most_recent_trade_date()
+    date = find_most_recent_trade_date()
 
     openapi = init_openapi()
 
@@ -140,23 +129,6 @@ def update_all(args):
         if openapi.count_over():
             print('호출 횟수가 초과되었습니다. 종료합니다.')
             break
-
-def _most_recent_trade_date():
-    date = datetime.date.today()
-
-    print('오늘: ' + date.strftime('%Y%m%d'))
-
-    if datetime.datetime.now().hour < 16:
-        date = date - datetime.timedelta(days=1)
-
-    xkrx = ecal.get_calendar("XKRX")
-    range = xkrx.sessions_in_range(date - datetime.timedelta(days=7), date)
-    date = range[-1]
-    most_recent_trade_date = date.strftime('%Y%m%d')
-
-    print('최근 거래일: ' + most_recent_trade_date)
-
-    return date
 
 def update_companies(args):
     print('테이블 생성 중...')
