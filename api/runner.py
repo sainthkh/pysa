@@ -2,12 +2,13 @@ import asyncio
 import sys
 import sqlite3
 import os
+import argparse
 
 dbPath = os.getcwd() + '/../db.db'
 con = sqlite3.connect(dbPath)
 cur = con.cursor()
 
-async def update_all():
+async def run_update_all():
     cur.execute('''SELECT code, name
         FROM    companies
         WHERE   rowid = (SELECT MAX(rowid) FROM companies);''')
@@ -26,11 +27,23 @@ async def update_all():
             sys.executable, 'cli.py', 'update-all',
             stdout=asyncio.subprocess.PIPE)
 
-        print("실행했습니다.")
+        print("프로세스를 실행했습니다.")
 
         # Wait for the subprocess exit.
         await proc.wait()
         
-        print("종료")
+        print("프로세스를 종료합니다.")
+    
+    print("업데이트가 완료되었습니다.")
 
-asyncio.run(update_all())
+def update_all(args):
+    asyncio.run(run_update_all())
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers()
+
+parser_sub = subparsers.add_parser('update-all')
+parser_sub.set_defaults(func=update_all)
+
+args = parser.parse_args()
+args.func(args)
